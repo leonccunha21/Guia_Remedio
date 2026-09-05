@@ -11,6 +11,12 @@ interface MedicationDao {
     @Query("SELECT * FROM medications ORDER BY name ASC")
     fun getAllMedications(): Flow<List<Medication>>
 
+    @Query("SELECT * FROM medications WHERE isActive = 1")
+    suspend fun getActiveMedicationsOnce(): List<Medication>
+
+    @Query("SELECT * FROM medications ORDER BY name ASC")
+    suspend fun getAllMedicationsOnce(): List<Medication>
+
     @Query("SELECT * FROM medications WHERE profileId = :profileId ORDER BY name ASC")
     fun getMedicationsByProfile(profileId: Int): Flow<List<Medication>>
 
@@ -30,6 +36,9 @@ interface MedicationDao {
     @Query("SELECT * FROM profiles ORDER BY isDefault DESC, name ASC")
     fun getAllProfiles(): Flow<List<Profile>>
 
+    @Query("SELECT * FROM profiles ORDER BY isDefault DESC, name ASC")
+    suspend fun getAllProfilesOnce(): List<Profile>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProfile(profile: Profile): Long
 
@@ -42,6 +51,9 @@ interface MedicationDao {
     // History
     @Query("SELECT * FROM dose_history ORDER BY timestamp DESC")
     fun getAllDoseHistory(): Flow<List<DoseHistory>>
+
+    @Query("SELECT * FROM dose_history ORDER BY timestamp DESC")
+    suspend fun getAllDoseHistoryOnce(): List<DoseHistory>
 
     @Query("SELECT * FROM dose_history WHERE medicationId IN (SELECT id FROM medications WHERE profileId = :profileId) ORDER BY timestamp DESC")
     fun getDoseHistoryByProfile(profileId: Int): Flow<List<DoseHistory>>

@@ -13,7 +13,7 @@
 
     <application
         android:name=".ProjectRApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@drawable/iconeapp"
@@ -35,6 +35,17 @@
 
         <receiver android:name=".receiver.AlarmReceiver" android:exported="false" />
 
+        <receiver
+            android:name=".receiver.BootReceiver"
+            android:directBootAware="false"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <receiver android:name=".widget.MedicationWidget"
             android:exported="false">
             <intent-filter>
@@ -46,7 +57,7 @@
 
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-6452875701061260~8738782400"/>
+            android:value="@string/admob_app_id"/>
 
         <property
             android:name="android.adservices.AD_SERVICES_CONFIG"

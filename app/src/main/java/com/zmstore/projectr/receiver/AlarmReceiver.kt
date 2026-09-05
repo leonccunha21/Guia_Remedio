@@ -43,7 +43,7 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 
     private fun showNotification(context: Context, medicationId: Int) {
-        CoroutineScope(Dispatchers.IO).launch {
+        launchAsync {
             val medication = repository.getMedicationById(medicationId) ?: return@launch
             if (!medication.isActive) return@launch
 
@@ -108,7 +108,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(medicationId)
 
-        CoroutineScope(Dispatchers.IO).launch {
+        launchAsync {
             repository.getMedicationById(medicationId)?.let { med ->
                 repository.insertDoseHistory(DoseHistory(medicationId = med.id, medicationName = med.name))
                 val updatedStock = if (med.stockCount > 0) med.stockCount - 1 else 0
@@ -126,9 +126,21 @@ class AlarmReceiver : BroadcastReceiver() {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(medicationId)
 
-        CoroutineScope(Dispatchers.IO).launch {
+        launchAsync {
             repository.getMedicationById(medicationId)?.let { med ->
                 MedicationAlarmHelper.scheduleSnooze(context, med)
+            }
+        }
+    }
+
+    /** Mantém o processo do receiver vivo até a operação de banco terminar. */
+    private fun launchAsync(block: suspend () -> Unit) {
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                block()
+            } finally {
+                pendingResult.finish()
             }
         }
     }
