@@ -312,9 +312,6 @@ class MainViewModel @Inject constructor(
             }
             // Sincroniza a lista completa atualizada
             cloudBackupRepository.syncMedications(repository.getAllMedicationsOnce())
-            if (status == DoseStatus.SKIPPED || status == DoseStatus.LATE) {
-                cloudBackupRepository.notifyCaregivers(repository.getCaregiverLinksOnce(), medication.name, status.name)
-            }
         }
     }
 
@@ -364,6 +361,9 @@ class MainViewModel @Inject constructor(
             }
             cloudBackupRepository.syncHistory(repository.getAllDoseHistoryOnce())
             cloudBackupRepository.syncMedications(repository.getAllMedicationsOnce())
+            if (status == DoseStatus.SKIPPED || status == DoseStatus.LATE) {
+                cloudBackupRepository.notifyCaregivers(repository.getCaregiverLinksOnce(), medication.name, status.name)
+            }
         }
     }
 
