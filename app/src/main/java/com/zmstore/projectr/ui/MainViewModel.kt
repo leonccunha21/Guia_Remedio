@@ -125,21 +125,21 @@ class MainViewModel @Inject constructor(
     fun insertProfile(name: String, color: Int) {
         viewModelScope.launch {
             repository.insertProfile(Profile(name = name, color = color))
-            cloudBackupRepository.syncProfiles(allProfiles.value) 
+            cloudBackupRepository.syncProfiles(repository.getAllProfilesOnce())
         }
     }
 
     fun updateProfile(profile: Profile) {
         viewModelScope.launch {
             repository.updateProfile(profile)
-            cloudBackupRepository.syncProfiles(allProfiles.value.map { if (it.id == profile.id) profile else it })
+            cloudBackupRepository.syncProfiles(repository.getAllProfilesOnce())
         }
     }
 
     fun deleteProfile(profile: Profile) {
         viewModelScope.launch {
             repository.deleteProfile(profile)
-            cloudBackupRepository.syncProfiles(allProfiles.value.filter { it.id != profile.id })
+            cloudBackupRepository.syncProfiles(repository.getAllProfilesOnce())
         }
     }
 
@@ -241,7 +241,7 @@ class MainViewModel @Inject constructor(
                     e.printStackTrace()
                 }
                 // Sincroniza a lista completa atualizada
-                cloudBackupRepository.syncMedications(allMedications.value.map { if (it.id == updatedMed.id) updatedMed else it })
+                cloudBackupRepository.syncMedications(repository.getAllMedicationsOnce())
             } else {
                 // Insere novo
                 val medicationWithProfile = if (currentProfile != null) {
@@ -257,7 +257,7 @@ class MainViewModel @Inject constructor(
                     e.printStackTrace()
                 }
                 // Sincroniza a lista completa atualizada
-                cloudBackupRepository.syncMedications(allMedications.value + insertedMedication)
+                cloudBackupRepository.syncMedications(repository.getAllMedicationsOnce())
             }
         }
     }
@@ -271,7 +271,7 @@ class MainViewModel @Inject constructor(
                 e.printStackTrace()
             }
             // Sincroniza a lista completa atualizada
-            cloudBackupRepository.syncMedications(allMedications.value.map { if (it.id == medication.id) medication else it })
+            cloudBackupRepository.syncMedications(repository.getAllMedicationsOnce())
         }
     }
 
@@ -281,16 +281,19 @@ class MainViewModel @Inject constructor(
 
     fun deleteMedication(medication: Medication) {
         viewModelScope.launch {
+            MedicationAlarmHelper.cancelAlarm(application, medication)
             repository.deleteMedication(medication)
             repository.deleteHistoryByMedication(medication.id)
             // Sincroniza a lista completa atualizada
-            cloudBackupRepository.syncMedications(allMedications.value.filter { it.id != medication.id })
+            cloudBackupRepository.syncMedications(repository.getAllMedicationsOnce())
+            cloudBackupRepository.syncHistory(repository.getAllDoseHistoryOnce())
         }
     }
 
     fun deleteDoseHistory(doseHistory: DoseHistory) {
         viewModelScope.launch {
             repository.deleteDoseHistory(doseHistory)
+            cloudBackupRepository.syncHistory(repository.getAllDoseHistoryOnce())
         }
     }
 
@@ -301,6 +304,7 @@ class MainViewModel @Inject constructor(
                 medicationName = medicationName,
                 note = note
             ))
+            cloudBackupRepository.syncHistory(repository.getAllDoseHistoryOnce())
             repository.getMedicationById(medicationId)?.let { med ->
                 val updatedStock = if (med.stockCount > 0) med.stockCount - 1 else 0
                 val updatedMed = med.copy(
@@ -334,7 +338,7 @@ class MainViewModel @Inject constructor(
                     e.printStackTrace()
                 }
                 // Sincroniza a lista completa atualizada
-                cloudBackupRepository.syncMedications(allMedications.value.map { if (it.id == updatedMed.id) updatedMed else it })
+                cloudBackupRepository.syncMedications(repository.getAllMedicationsOnce())
             }
         }
     }

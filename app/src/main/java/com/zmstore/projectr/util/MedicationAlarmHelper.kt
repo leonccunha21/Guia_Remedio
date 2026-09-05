@@ -83,6 +83,14 @@ object MedicationAlarmHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pendingIntent)
+
+        val snoozePendingIntent = PendingIntent.getBroadcast(
+            context,
+            medication.id + 99999,
+            intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+        snoozePendingIntent?.let(alarmManager::cancel)
     }
 
     private fun calculateNextTriggerTime(medication: Medication): Long {

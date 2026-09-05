@@ -38,10 +38,9 @@ object DiModule {
     @Provides
     @Singleton
     fun provideCloudBackupRepository(
-        @ApplicationContext context: Context,
         authRepository: AuthRepository
     ): CloudBackupRepository {
-        return CloudBackupRepository(context, authRepository)
+        return CloudBackupRepository(authRepository)
     }
 
     @Provides

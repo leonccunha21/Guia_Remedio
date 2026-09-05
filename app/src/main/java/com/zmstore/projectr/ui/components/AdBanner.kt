@@ -7,6 +7,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
+import com.zmstore.projectr.R
 
 @Composable
 fun AdBanner(modifier: Modifier = Modifier) {
@@ -15,8 +16,7 @@ fun AdBanner(modifier: Modifier = Modifier) {
         factory = { context ->
             AdView(context).apply {
                 setAdSize(AdSize.BANNER)
-                // ID do Banner oficial do usuário
-                setAdUnitId("ca-app-pub-6452875701061260/1899548488")
+                setAdUnitId(context.getString(R.string.admob_banner_id))
                 loadAd(AdRequest.Builder().build())
             }
         }

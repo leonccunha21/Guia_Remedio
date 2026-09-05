@@ -1,4 +1,7 @@
 <resources>
+    <!-- Identificadores públicos centralizados para evitar configuração espalhada no código. -->
+    <string name="admob_app_id" translatable="false">ca-app-pub-6452875701061260~8738782400</string>
+    <string name="admob_banner_id" translatable="false">ca-app-pub-6452875701061260/1899548488</string>
     <string name="app_name">ZM Remédio Certo</string>
     <string name="google_web_client_id">628288864637-vg10ukdnfke20fva6hlntf10i7vfe2j8.apps.googleusercontent.com</string>
 

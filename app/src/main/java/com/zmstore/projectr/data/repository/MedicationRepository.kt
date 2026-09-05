@@ -20,6 +20,16 @@ class MedicationRepository(private val medicationDao: MedicationDao) {
         return medicationDao.getMedicationById(id)
     }
 
+    suspend fun getActiveMedicationsOnce(): List<Medication> {
+        return medicationDao.getActiveMedicationsOnce()
+    }
+
+    suspend fun getAllMedicationsOnce(): List<Medication> = medicationDao.getAllMedicationsOnce()
+
+    suspend fun getAllProfilesOnce(): List<Profile> = medicationDao.getAllProfilesOnce()
+
+    suspend fun getAllDoseHistoryOnce(): List<DoseHistory> = medicationDao.getAllDoseHistoryOnce()
+
     suspend fun insertMedication(medication: Medication): Long {
         return medicationDao.insertMedication(medication)
     }

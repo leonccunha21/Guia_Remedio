@@ -1,6 +1,5 @@
 ﻿package com.zmstore.projectr.data.remote
 
-import android.content.Context
 import com.zmstore.projectr.data.model.DoseHistory
 import com.zmstore.projectr.data.model.Medication
 import com.zmstore.projectr.data.model.Profile
@@ -13,10 +12,9 @@ import com.zmstore.projectr.data.repository.AuthRepository
 import kotlinx.coroutines.tasks.await
 
 class CloudBackupRepository @Inject constructor(
-    private val context: Context,
     private val authRepository: AuthRepository
 ) {
-    private val database = FirebaseDatabase.getInstance("https://zm-remedio-certo-guia-visual-default-rtdb.firebaseio.com/").reference
+    private val database = FirebaseDatabase.getInstance().reference
 
     suspend fun syncMedications(medications: List<Medication>) {
         val user = authRepository.currentUser ?: return

@@ -1,6 +1,9 @@
 ### Sempre que iniciar uma melhoria verificar o arquivo Regras para verificar se a melhoria está dentro dos padrões de desenvolvimento.
 
 ### Melhorias Implementadas (CONCLUÍDAS ✅)
+*   **🛡️ Base confiável v2.0** (Setembro 2026): Gradle compatível, dados sensíveis fora do backup automático do Android, configuração centralizada e versão atualizada.
+*   **⏰ Alarmes resistentes a reinicialização** (Setembro 2026): Lembretes ativos são restaurados após reiniciar o celular ou atualizar o aplicativo; alarmes adiados também são cancelados ao excluir um medicamento.
+*   **☁️ Backup consistente** (Setembro 2026): Sincronização usa uma leitura confirmada do Room depois de cada alteração e agora inclui inclusões/exclusões no histórico.
 *   **✨ Shared Element Transitions** (Abril 2026): Implementadas transições premium entre HomeScreen e MedicationDetail.
 *   **📊 Dashboard de Adesão** (Abril 2026): Novo componente visual na Home com progresso diário circular.
 *   **🤖 Pesquisa com IA (Gemini)** (Abril 2026): Preenchimento automático de campos avançados (bula) e aviso de interações medicamentosas.
