@@ -29,6 +29,9 @@ sealed class Screen(val route: String) {
     object Profile : Screen("profile")
     object Help : Screen("help")
     object Alarms : Screen("alarms")
+    object Today : Screen("today")
+    object Health : Screen("health")
+    object Caregivers : Screen("caregivers")
     object Detail : Screen("detail/{medicationName}?id={id}") {
         fun createRoute(name: String, id: Int = -1) = 
             "detail/${URLEncoder.encode(name, StandardCharsets.UTF_8.toString())}?id=$id"
@@ -93,6 +96,15 @@ fun NavGraph(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() }
                 )
+            }
+            composable(Screen.Today.route) {
+                com.zmstore.projectr.ui.today.TodayScreen(viewModel, onBack = { navController.popBackStack() })
+            }
+            composable(Screen.Health.route) {
+                com.zmstore.projectr.ui.health.HealthScreen(viewModel, onBack = { navController.popBackStack() })
+            }
+            composable(Screen.Caregivers.route) {
+                com.zmstore.projectr.ui.caregiver.CaregiverScreen(viewModel, onBack = { navController.popBackStack() })
             }
             composable(Screen.Camera.route) {
                 CameraScreen(

@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.zmstore.projectr.data.model.DoseHistory
 import com.zmstore.projectr.data.model.Medication
 import com.zmstore.projectr.data.model.Profile
+import com.zmstore.projectr.data.model.HealthEntry
+import com.zmstore.projectr.data.model.CaregiverLink
+import com.zmstore.projectr.data.model.DoseStatus
 import com.zmstore.projectr.data.repository.MedicationRepository
 import com.zmstore.projectr.data.repository.UserPreferencesRepository
 import com.zmstore.projectr.data.repository.UserPreferences
@@ -16,6 +19,7 @@ import javax.inject.Inject
 
 import com.zmstore.projectr.util.MedicationAlarmHelper
 import com.zmstore.projectr.data.remote.CloudBackupRepository
+import com.zmstore.projectr.data.remote.CaregiverAlert
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.auth.PhoneAuthCredential
 
@@ -47,6 +51,19 @@ class MainViewModel @Inject constructor(
 
     val allProfiles: StateFlow<List<Profile>> = repository.allProfiles
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val healthEntries: StateFlow<List<HealthEntry>> = repository.healthEntries
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val caregiverLinks: StateFlow<List<CaregiverLink>> = repository.caregiverLinks
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val caregiverAlerts: StateFlow<List<CaregiverAlert>> = currentUser.flatMapLatest { user ->
+        if (user != null && !user.isAnonymous) cloudBackupRepository.caregiverAlerts() else flowOf(emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _cloudMessage = MutableSharedFlow<String>()
+    val cloudMessage = _cloudMessage.asSharedFlow()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -113,6 +130,29 @@ class MainViewModel @Inject constructor(
             allProfiles.collect { profiles ->
                 if (_selectedProfile.value == null && profiles.isNotEmpty()) {
                     _selectedProfile.value = profiles.find { it.isDefault } ?: profiles.first()
+                }
+            }
+        }
+        viewModelScope.launch {
+            var restoredOwner: String? = null
+            currentUser.collect { user ->
+                val uid = user?.uid ?: return@collect
+                if (uid == restoredOwner) return@collect
+                restoredOwner = uid
+                _selectedProfile.value = null
+                repository.claimLegacyData()
+                if (!user.isAnonymous && repository.getAllMedicationsOnce().isEmpty()) {
+                    cloudBackupRepository.restoreAll().onSuccess { backup ->
+                        backup.profiles.forEach { repository.insertProfile(it) }
+                        backup.medications.forEach { repository.insertMedication(it) }
+                        backup.history.forEach { repository.insertDoseHistory(it) }
+                        backup.health.forEach { repository.insertHealthEntry(it) }
+                        backup.caregivers.forEach { repository.insertCaregiverLink(it) }
+                        if (backup.medications.isNotEmpty()) _cloudMessage.emit("Backup restaurado com sucesso")
+                    }.onFailure { _cloudMessage.emit("Não foi possível restaurar o backup agora") }
+                }
+                if (repository.getAllProfilesOnce().isEmpty()) {
+                    repository.insertProfile(Profile(name = "Meu Perfil", isDefault = true))
                 }
             }
         }
@@ -272,6 +312,9 @@ class MainViewModel @Inject constructor(
             }
             // Sincroniza a lista completa atualizada
             cloudBackupRepository.syncMedications(repository.getAllMedicationsOnce())
+            if (status == DoseStatus.SKIPPED || status == DoseStatus.LATE) {
+                cloudBackupRepository.notifyCaregivers(repository.getCaregiverLinksOnce(), medication.name, status.name)
+            }
         }
     }
 
@@ -295,6 +338,70 @@ class MainViewModel @Inject constructor(
             repository.deleteDoseHistory(doseHistory)
             cloudBackupRepository.syncHistory(repository.getAllDoseHistoryOnce())
         }
+    }
+
+    fun registerDose(medication: Medication, status: DoseStatus, note: String? = null) {
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            repository.insertDoseHistory(DoseHistory(
+                medicationId = medication.id,
+                medicationName = medication.name,
+                timestamp = now,
+                scheduledTimestamp = nextScheduledTimestamp(medication),
+                status = status.name,
+                note = note
+            ))
+            if (status == DoseStatus.TAKEN || status == DoseStatus.LATE) {
+                val updated = medication.copy(
+                    lastTakenTimestamp = now,
+                    stockCount = (medication.stockCount - 1).coerceAtLeast(0),
+                    streakCount = medication.streakCount + 1
+                )
+                repository.updateMedication(updated)
+                MedicationAlarmHelper.scheduleAlarm(application, updated)
+            } else if (status == DoseStatus.SNOOZED) {
+                MedicationAlarmHelper.scheduleSnooze(application, medication)
+            }
+            cloudBackupRepository.syncHistory(repository.getAllDoseHistoryOnce())
+            cloudBackupRepository.syncMedications(repository.getAllMedicationsOnce())
+        }
+    }
+
+    fun insertHealthEntry(entry: HealthEntry) {
+        viewModelScope.launch {
+            repository.insertHealthEntry(entry.copy(profileId = _selectedProfile.value?.id ?: 0))
+            cloudBackupRepository.syncHealth(repository.getHealthEntriesOnce())
+        }
+    }
+
+    fun deleteHealthEntry(entry: HealthEntry) {
+        viewModelScope.launch {
+            repository.deleteHealthEntry(entry)
+            cloudBackupRepository.syncHealth(repository.getHealthEntriesOnce())
+        }
+    }
+
+    fun insertCaregiver(name: String, uid: String) {
+        viewModelScope.launch {
+            repository.insertCaregiverLink(CaregiverLink(caregiverName = name.trim(), caregiverUid = uid.trim()))
+            cloudBackupRepository.syncCaregivers(repository.getCaregiverLinksOnce())
+        }
+    }
+
+    fun deleteCaregiver(link: CaregiverLink) {
+        viewModelScope.launch {
+            repository.deleteCaregiverLink(link)
+            cloudBackupRepository.syncCaregivers(repository.getCaregiverLinksOnce())
+        }
+    }
+
+    fun nextScheduledTimestamp(medication: Medication): Long {
+        val now = System.currentTimeMillis()
+        if (medication.intervalHours > 0) {
+            val base = medication.lastTakenTimestamp.takeIf { it > 0 } ?: now
+            return base + medication.intervalHours * 3_600_000L
+        }
+        return now
     }
 
     fun confirmDose(medicationId: Int, medicationName: String, note: String? = null) {
@@ -377,12 +484,13 @@ class MainViewModel @Inject constructor(
                     Forneça informações detalhadas sobre o medicamento: $medicationName
                     Responda em formato JSON rigoroso com as seguintes chaves (em português):
                     - "name": Nome oficial
-                    - "dosage": Dosagem comum
+                    - "dosage": Deixe vazio; não recomende dosagem
                     - "purpose": Para que serve
-                    - "instructions": Como tomar
+                    - "instructions": Resuma apenas orientações gerais da bula, sem prescrever
                     - "sideEffects": Efeitos colaterais comuns
                     - "alerts": Advertências importantes
-                    SEJA CONCISO.
+                    Use somente informações verificáveis e deixe claro quando não houver certeza.
+                    Não faça diagnóstico, não prescreva e não altere tratamento. SEJA CONCISO.
                 """.trimIndent()
 
                 val response = generativeModel.generateContent(prompt)

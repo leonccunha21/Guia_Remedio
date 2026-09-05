@@ -107,4 +107,5 @@
     <!-- Notifications -->
     <string name="notification_action_confirm">Tomar Agora</string>
     <string name="notification_action_snooze">Soneca (10 min)</string>
+    <string name="notification_action_skip">Ignorar dose</string>
 </resources>

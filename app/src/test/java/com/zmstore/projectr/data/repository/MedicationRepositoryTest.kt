@@ -46,6 +46,7 @@ class MedicationRepositoryTest {
         val all = repository.allMedications.first()
         assertEquals(1, all.size)
         assertEquals("Paracetamol", all[0].name)
+        assertEquals(MedicationRepository.TEST_OWNER, all[0].ownerId)
     }
 
     @Test

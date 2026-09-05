@@ -18,16 +18,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.zmstore.projectr.util.MedicationAlarmHelper
+import com.zmstore.projectr.data.model.DoseStatus
+import com.zmstore.projectr.data.remote.CloudBackupRepository
 
 @AndroidEntryPoint
 class AlarmReceiver : BroadcastReceiver() {
 
     @Inject
     lateinit var repository: MedicationRepository
+    @Inject lateinit var cloudBackupRepository: CloudBackupRepository
 
     companion object {
         const val ACTION_CONFIRM = "com.zmstore.projectr.ACTION_CONFIRM"
         const val ACTION_SNOOZE = "com.zmstore.projectr.ACTION_SNOOZE"
+        const val ACTION_SKIP = "com.zmstore.projectr.ACTION_SKIP"
         const val EXTRA_MEDICATION_ID = "MEDICATION_ID"
     }
 
@@ -38,6 +42,7 @@ class AlarmReceiver : BroadcastReceiver() {
         when (intent.action) {
             ACTION_CONFIRM -> handleConfirm(context, medicationId)
             ACTION_SNOOZE -> handleSnooze(context, medicationId)
+            ACTION_SKIP -> handleSkip(context, medicationId)
             else -> showNotification(context, medicationId)
         }
     }
@@ -85,15 +90,19 @@ class AlarmReceiver : BroadcastReceiver() {
             val snoozePendingIntent = PendingIntent.getBroadcast(
                 context, medicationId * 10 + 2, snoozeIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
+            val skipIntent = Intent(context, AlarmReceiver::class.java).apply { action = ACTION_SKIP; putExtra(EXTRA_MEDICATION_ID, medicationId) }
+            val skipPendingIntent = PendingIntent.getBroadcast(context, medicationId * 10 + 3, skipIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
             val notification = NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(R.drawable.iconeapp)
                 .setContentTitle("Hora do Remédio: ${medication.name}")
                 .setContentText("Não esqueça de tomar sua dose agora.$lowStockAlert")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setAutoCancel(true)
+                .setAutoCancel(false)
+                .setOngoing(true)
                 .addAction(R.drawable.ic_check_circle, context.getString(R.string.notification_action_confirm), confirmPendingIntent)
                 .addAction(R.drawable.ic_notifications, context.getString(R.string.notification_action_snooze), snoozePendingIntent)
+                .addAction(R.drawable.ic_notifications, context.getString(R.string.notification_action_skip), skipPendingIntent)
                 .setStyle(NotificationCompat.BigTextStyle().bigText("Não esqueça de tomar sua dose de ${medication.name} agora.$lowStockAlert"))
                 .build()
 
@@ -118,6 +127,8 @@ class AlarmReceiver : BroadcastReceiver() {
                 )
                 repository.updateMedication(updatedMed)
                 MedicationAlarmHelper.scheduleAlarm(context, updatedMed)
+                cloudBackupRepository.syncHistory(repository.getAllDoseHistoryOnce())
+                cloudBackupRepository.syncMedications(repository.getAllMedicationsOnce())
             }
         }
     }
@@ -129,6 +140,18 @@ class AlarmReceiver : BroadcastReceiver() {
         launchAsync {
             repository.getMedicationById(medicationId)?.let { med ->
                 MedicationAlarmHelper.scheduleSnooze(context, med)
+            }
+        }
+    }
+
+    private fun handleSkip(context: Context, medicationId: Int) {
+        (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(medicationId)
+        launchAsync {
+            repository.getMedicationById(medicationId)?.let { medication ->
+                repository.insertDoseHistory(DoseHistory(medicationId = medication.id, medicationName = medication.name, status = DoseStatus.SKIPPED.name))
+                cloudBackupRepository.syncHistory(repository.getAllDoseHistoryOnce())
+                cloudBackupRepository.notifyCaregivers(repository.getCaregiverLinksOnce(), medication.name, DoseStatus.SKIPPED.name)
+                MedicationAlarmHelper.scheduleAlarm(context, medication)
             }
         }
     }

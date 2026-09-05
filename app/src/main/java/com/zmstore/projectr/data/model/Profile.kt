@@ -2,11 +2,13 @@
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.Index
 
-@Entity(tableName = "profiles")
+@Entity(tableName = "profiles", indices = [Index("ownerId")])
 data class Profile(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val name: String,
+    val name: String = "",
     val color: Int = 0xFF008080.toInt(), // Default MedicleanTeal
-    val isDefault: Boolean = false
+    val isDefault: Boolean = false,
+    val ownerId: String = "legacy"
 )

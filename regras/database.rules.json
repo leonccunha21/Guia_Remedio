@@ -18,6 +18,14 @@
         }
       }
     },
+    "caregiverAlerts": {
+      "$caregiverUid": {
+        ".read": "$caregiverUid === auth.uid",
+        "$alertId": {
+          ".write": "auth != null && newData.child('patientUid').val() === auth.uid"
+        }
+      }
+    },
     "master_catalog": {
       ".read": "auth != null",
       ".write": "root.child('users').child(auth.uid).child('isAdmin').val() === true"
