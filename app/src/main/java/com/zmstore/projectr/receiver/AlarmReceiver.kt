@@ -44,8 +44,8 @@ class AlarmReceiver : BroadcastReceiver() {
 
     private fun showNotification(context: Context, medicationId: Int) {
         launchAsync {
-            val medication = repository.getMedicationById(medicationId) ?: return@launch
-            if (!medication.isActive) return@launch
+            val medication = repository.getMedicationById(medicationId) ?: return@launchAsync
+            if (!medication.isActive) return@launchAsync
 
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val channelId = "medication_reminders"
