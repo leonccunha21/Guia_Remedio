@@ -71,6 +71,10 @@ fun MedicationDetailScreen(
     var lastTakenTimestamp by remember { mutableLongStateOf(0L) }
     var iconType by remember { mutableStateOf("pill") }
     var iconColor by remember { mutableIntStateOf(0xFF00A79D.toInt()) }
+    var treatmentStart by remember { mutableStateOf("") }
+    var treatmentEnd by remember { mutableStateOf("") }
+    var sourceLabel by remember { mutableStateOf("") }
+    var sourceUrl by remember { mutableStateOf("") }
 
     val aiResult by viewModel.aiResearchResult.collectAsState()
     val isAiSearching by viewModel.isAiSearching.collectAsState()
@@ -128,6 +132,10 @@ fun MedicationDetailScreen(
                 lastTakenTimestamp = it.lastTakenTimestamp
                 iconType = it.iconType
                 iconColor = it.iconColor
+                treatmentStart = formatTreatmentDate(it.treatmentStartDate)
+                treatmentEnd = formatTreatmentDate(it.treatmentEndDate)
+                sourceLabel = it.officialSourceLabel
+                sourceUrl = it.officialSourceUrl
             }
         }
     }
@@ -405,6 +413,12 @@ fun MedicationDetailScreen(
                         }
 
                         Column(modifier = Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text(
+                                "Conteúdo gerado por IA pode conter erros. Confirme na bula oficial e com médico ou farmacêutico. Não altere doses ou tratamentos com base no aplicativo.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MedicleanError,
+                                fontWeight = FontWeight.Bold
+                            )
                             Surface(
                                 onClick = {
                                     val textToSpeak = buildString {
@@ -429,6 +443,12 @@ fun MedicationDetailScreen(
                             PremiumTextField(value = purpose, onValueChange = { purpose = it }, label = "Para que serve", isMultiLine = true)
                             PremiumTextField(value = instructions, onValueChange = { instructions = it }, label = "Como tomar / Instruções", isMultiLine = true)
                             PremiumTextField(value = sideEffects, onValueChange = { sideEffects = it }, label = "Efeitos Colaterais", isMultiLine = true)
+                            PremiumTextField(value = alerts, onValueChange = { alerts = it }, label = "Alertas e contraindicações", isMultiLine = true)
+                            Text("TRATAMENTO E FONTE", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = MedicleanTeal)
+                            PremiumTextField(value = treatmentStart, onValueChange = { treatmentStart = it }, label = "Início (dd/mm/aaaa)")
+                            PremiumTextField(value = treatmentEnd, onValueChange = { treatmentEnd = it }, label = "Término (dd/mm/aaaa)")
+                            PremiumTextField(value = sourceLabel, onValueChange = { sourceLabel = it }, label = "Fonte oficial (ex.: Anvisa)")
+                            PremiumTextField(value = sourceUrl, onValueChange = { sourceUrl = it }, label = "Link da fonte oficial")
                             
                             // Interaction Warning Card
                             if (interactionWarning != null) {
@@ -476,7 +496,11 @@ fun MedicationDetailScreen(
                             profileId = profileId,
                             lastTakenTimestamp = lastTakenTimestamp,
                             iconType = iconType,
-                            iconColor = iconColor
+                            iconColor = iconColor,
+                            treatmentStartDate = parseTreatmentDate(treatmentStart),
+                            treatmentEndDate = parseTreatmentDate(treatmentEnd, endOfDay = true),
+                            officialSourceLabel = sourceLabel.trim(),
+                            officialSourceUrl = sourceUrl.trim()
                         )
                         onSave(medication)
                     },
@@ -492,6 +516,18 @@ fun MedicationDetailScreen(
         }
     }
 }
+
+private fun parseTreatmentDate(value: String, endOfDay: Boolean = false): Long {
+    if (value.isBlank()) return 0L
+    return runCatching {
+        java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).apply { isLenient = false }.parse(value.trim())?.time?.let {
+            if (endOfDay) it + 86_399_999L else it
+        } ?: 0L
+    }.getOrDefault(0L)
+}
+
+private fun formatTreatmentDate(value: Long): String = if (value <= 0L) "" else
+    java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date(value))
 
 @Composable
 fun PremiumTextField(

@@ -21,6 +21,18 @@ data class UserPreferences(
 )
 
 class UserPreferencesRepository(private val context: Context) {
+    private val securePreferences by lazy {
+        val masterKey = androidx.security.crypto.MasterKey.Builder(context)
+            .setKeyScheme(androidx.security.crypto.MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        androidx.security.crypto.EncryptedSharedPreferences.create(
+            context,
+            "secure_user_preferences",
+            masterKey,
+            androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
     private object PreferencesKeys {
         val NAME = stringPreferencesKey("user_name")
         val WEIGHT = stringPreferencesKey("user_weight")
@@ -44,7 +56,8 @@ class UserPreferencesRepository(private val context: Context) {
                 weight = preferences[PreferencesKeys.WEIGHT] ?: "",
                 height = preferences[PreferencesKeys.HEIGHT] ?: "",
                 emergencyContact = preferences[PreferencesKeys.EMERGENCY_CONTACT] ?: "",
-                geminiApiKey = preferences[PreferencesKeys.GEMINI_API_KEY] ?: "",
+                geminiApiKey = securePreferences.getString("gemini_api_key", null)
+                    ?: preferences[PreferencesKeys.GEMINI_API_KEY] ?: "",
                 isBiometricEnabled = preferences[PreferencesKeys.IS_BIOMETRIC_ENABLED] ?: false,
                 isFirstRun = preferences[PreferencesKeys.IS_FIRST_RUN] ?: true
             )
@@ -63,9 +76,10 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.WEIGHT] = weight
             preferences[PreferencesKeys.HEIGHT] = height
             preferences[PreferencesKeys.EMERGENCY_CONTACT] = emergencyContact
-            preferences[PreferencesKeys.GEMINI_API_KEY] = geminiApiKey
+            preferences.remove(PreferencesKeys.GEMINI_API_KEY)
             preferences[PreferencesKeys.IS_BIOMETRIC_ENABLED] = isBiometricEnabled
         }
+        securePreferences.edit().putString("gemini_api_key", geminiApiKey).apply()
     }
 
     suspend fun setFirstRunCompleted() {

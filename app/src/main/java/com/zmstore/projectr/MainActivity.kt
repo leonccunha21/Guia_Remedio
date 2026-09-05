@@ -183,7 +183,7 @@ class MainActivity : FragmentActivity() {
                                     fontWeight = FontWeight.Black
                                 )
                                 Text(
-                                    "Versão 2.4 - Premium",
+                                    "Versão 3.0 - Premium",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color.White.copy(alpha = 0.7f),
                                     fontWeight = FontWeight.Bold
@@ -195,8 +195,11 @@ class MainActivity : FragmentActivity() {
                         
                         val drawerItems = listOf(
                             Triple(stringResource(R.string.home_drawer_home), Icons.Default.Home, Screen.Home.route),
+                            Triple("Hoje", Icons.Default.Today, Screen.Today.route),
                             Triple("Meus Remédios", Icons.Default.Medication, Screen.MedicationList.route),
                             Triple("Alarmes e Alertas", Icons.Default.Notifications, Screen.Alarms.route),
+                            Triple("Saúde e Sintomas", Icons.Default.Favorite, Screen.Health.route),
+                            Triple("Cuidadores", Icons.Default.Group, Screen.Caregivers.route),
                             Triple(stringResource(R.string.home_drawer_calendar), Icons.Default.CalendarToday, Screen.History.route),
                             Triple(stringResource(R.string.home_drawer_profile), Icons.Default.Person, Screen.Profile.route),
                             Triple(stringResource(R.string.home_drawer_help), Icons.Default.Info, Screen.Help.route)

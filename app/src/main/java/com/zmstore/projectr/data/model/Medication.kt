@@ -2,16 +2,17 @@
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.Index
 
-@Entity(tableName = "medications")
+@Entity(tableName = "medications", indices = [Index("ownerId")])
 data class Medication(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val name: String,
-    val dosage: String,
-    val purpose: String,
-    val instructions: String,
-    val sideEffects: String,
-    val alerts: String,
+    val name: String = "",
+    val dosage: String = "",
+    val purpose: String = "",
+    val instructions: String = "",
+    val sideEffects: String = "",
+    val alerts: String = "",
     val imageUrl: String? = null,
     val stockCount: Int = 0,
     val intervalHours: Int = 0,
@@ -22,5 +23,10 @@ data class Medication(
     val profileId: Int = 0, // Default profile
     val iconType: String = "pill", // pill, capsule, drops, liquid
     val iconColor: Int = 0xFF008080.toInt(), // MedicleanTeal
-    val streakCount: Int = 0
+    val streakCount: Int = 0,
+    val ownerId: String = "legacy",
+    val treatmentStartDate: Long = 0L,
+    val treatmentEndDate: Long = 0L,
+    val officialSourceUrl: String = "",
+    val officialSourceLabel: String = ""
 )

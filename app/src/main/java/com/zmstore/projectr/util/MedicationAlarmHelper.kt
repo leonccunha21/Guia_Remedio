@@ -13,7 +13,10 @@ import java.util.concurrent.TimeUnit
 object MedicationAlarmHelper {
 
     fun scheduleAlarm(context: Context, medication: Medication) {
-        if (!medication.isActive) {
+        val now = System.currentTimeMillis()
+        val outsideTreatment = (medication.treatmentStartDate > 0 && now < medication.treatmentStartDate) ||
+            (medication.treatmentEndDate > 0 && now > medication.treatmentEndDate)
+        if (!medication.isActive || outsideTreatment) {
             cancelAlarm(context, medication)
             return
         }

@@ -49,6 +49,7 @@ fun HistoryScreen(
     val history by viewModel.doseHistory.collectAsState()
     val medications by viewModel.medications.collectAsState()
     val selectedProfile by viewModel.selectedProfile.collectAsState()
+    val healthEntries by viewModel.healthEntries.collectAsState()
     var showQrDialog by remember { mutableStateOf(false) }
     
     val upcomingDoses = remember(medications) {
@@ -98,7 +99,7 @@ fun HistoryScreen(
                     activeMeds = medications.count { it.isActive },
                     history = history,
                     onExportPdf = {
-                        PdfExportHelper.exportAdherenceReport(context, history, medications, selectedProfile)
+                        PdfExportHelper.exportAdherenceReport(context, history, medications, selectedProfile, healthEntries)
                     },
                     onShareQr = { showQrDialog = true }
                 )
@@ -366,6 +367,12 @@ fun HistoryItem(dose: DoseHistory) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(dose.medicationName, fontWeight = FontWeight.Black, color = MedicleanDarkGreen)
                 Text(
+                    when (dose.status) { "LATE" -> "Dose atrasada"; "SKIPPED" -> "Dose ignorada"; "SNOOZED" -> "Dose adiada"; else -> "Dose tomada" },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (dose.status == "SKIPPED") MedicleanError else MedicleanTeal,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
                     "${dayFormat.format(Date(dose.timestamp))} às ${dateFormat.format(Date(dose.timestamp))}", 
                     style = MaterialTheme.typography.bodySmall, 
                     color = MedicleanDarkGreen.copy(alpha = 0.5f),
@@ -421,4 +428,3 @@ fun UpcomingDoseItem(medication: Medication, countdown: String) {
         }
     }
 }
-

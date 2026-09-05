@@ -8,6 +8,8 @@ import com.zmstore.projectr.data.repository.UserPreferencesRepository
 import com.zmstore.projectr.data.repository.UserPreferences
 import com.zmstore.projectr.data.repository.AuthRepository
 import com.zmstore.projectr.data.remote.CloudBackupRepository
+import com.zmstore.projectr.data.model.HealthEntry
+import com.zmstore.projectr.data.model.CaregiverLink
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +40,8 @@ class MainViewModelTest {
         coEvery { repository.allMedications } returns flowOf(emptyList())
         coEvery { repository.allDoseHistory } returns flowOf(emptyList())
         coEvery { repository.allProfiles } returns flowOf(emptyList())
+        coEvery { repository.healthEntries } returns flowOf(emptyList<HealthEntry>())
+        coEvery { repository.caregiverLinks } returns flowOf(emptyList<CaregiverLink>())
         coEvery { userPrefsRepository.userPreferencesFlow } returns flowOf(UserPreferences("", "", "", "", ""))
         coEvery { authRepository.currentUserFlow } returns flowOf(null)
         

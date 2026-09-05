@@ -9,6 +9,7 @@ import android.os.Environment
 import android.widget.Toast
 import com.zmstore.projectr.data.model.DoseHistory
 import com.zmstore.projectr.data.model.Medication
+import com.zmstore.projectr.data.model.HealthEntry
 import android.content.Intent
 import androidx.core.content.FileProvider
 import java.io.File
@@ -22,7 +23,8 @@ object PdfExportHelper {
         context: Context,
         history: List<DoseHistory>,
         medications: List<Medication>,
-        profile: com.zmstore.projectr.data.model.Profile?
+        profile: com.zmstore.projectr.data.model.Profile?,
+        healthEntries: List<HealthEntry> = emptyList()
     ) {
         val pdfDocument = PdfDocument()
         
@@ -151,13 +153,28 @@ object PdfExportHelper {
             val dateStr = SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault()).format(Date(dose.timestamp))
             canvas.drawText(dateStr, 50f, y, textPaint)
             canvas.drawText(dose.medicationName, 180f, y, textPaint)
-            canvas.drawText("TOMADO", 420f, y, textPaint)
+            val statusLabel = when (dose.status) {
+                "LATE" -> "ATRASADA"
+                "SKIPPED" -> "IGNORADA"
+                "SNOOZED" -> "ADIADA"
+                else -> "TOMADA"
+            }
+            canvas.drawText(statusLabel, 420f, y, textPaint)
             canvas.drawText(dose.note ?: "-", 500f, y, textPaint)
             
             canvas.drawLine(40f, y + 5f, 555f, y + 5f, linePaint)
             y += 20f
         }
         
+        if (healthEntries.isNotEmpty() && y < 740f) {
+            y += 20f
+            canvas.drawText("REGISTROS DE SAÚDE RECENTES", 40f, y, headerPaint)
+            healthEntries.take(5).forEach { entry ->
+                y += 18f
+                canvas.drawText("${entry.type}: ${entry.primaryValue} ${entry.secondaryValue} ${entry.note}".take(85), 50f, y, textPaint)
+            }
+        }
+
         // Footer
         val footerY = 820f
         canvas.drawText("Documento gerado automaticamente pelo aplicativo RemÉdio Certo Guia Visual.", 40f, footerY, labelPaint)

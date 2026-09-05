@@ -14,6 +14,12 @@ Aplicativo Android para organizar medicamentos, horários, estoque e histórico 
 - Consulta assistida por IA com chave do próprio usuário
 - Login e backup Firebase para contas identificadas
 - Proteção biométrica e widget Android
+- Dados locais isolados por conta Firebase
+- Restauração automática do backup em aparelhos novos
+- Tratamentos com período de início e término
+- Linha do tempo diária com doses tomadas, atrasadas, adiadas e ignoradas
+- Diário de sintomas, pressão arterial, glicemia e bem-estar
+- Modo cuidador com alertas remotos dentro do aplicativo
 
 ## Requisitos
 
@@ -47,7 +53,7 @@ No Windows, use `gradlew.bat assembleDebug`.
 
 ## Privacidade
 
-O backup automático do Android está desativado porque o banco pode conter informações de saúde. O backup do Firebase é gravado sob `users/{uid}` e deve ser protegido pelas regras presentes em `regras/database.rules.json`.
+O backup automático do Android está desativado porque o banco pode conter informações de saúde. Dados Room são separados pelo UID autenticado, a chave da IA usa armazenamento criptografado e o backup Firebase é gravado sob `users/{uid}`. Publique também as regras presentes em `regras/database.rules.json` no Firebase Console.
 
 ## Licença
 

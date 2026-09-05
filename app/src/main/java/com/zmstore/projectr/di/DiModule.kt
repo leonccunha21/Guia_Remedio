@@ -56,8 +56,8 @@ object DiModule {
 
     @Provides
     @Singleton
-    fun provideMedicationRepository(medicationDao: MedicationDao): MedicationRepository {
-        return MedicationRepository(medicationDao)
+    fun provideMedicationRepository(medicationDao: MedicationDao, authRepository: AuthRepository): MedicationRepository {
+        return MedicationRepository(medicationDao, authRepository)
     }
 
     @Provides

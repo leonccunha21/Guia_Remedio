@@ -1,6 +1,13 @@
 ### Sempre que iniciar uma melhoria verificar o arquivo Regras para verificar se a melhoria está dentro dos padrões de desenvolvimento.
 
 ### Melhorias Implementadas (CONCLUÍDAS ✅)
+*   **✅ Segurança multiusuário v3.0** (Setembro 2026): Room isolado por UID, migração preservando dados antigos e troca segura de perfil ao mudar de conta.
+*   **✅ Nuvem bidirecional** (Setembro 2026): Restauração automática em aparelho novo e sincronização de medicamentos, perfis, histórico, saúde e cuidadores.
+*   **✅ Central Hoje e tratamentos** (Setembro 2026): Linha do tempo diária, início e término de tratamento e registros de dose tomada, atrasada, adiada ou ignorada.
+*   **✅ Modo Cuidador** (Setembro 2026): Vínculo por código da conta e alertas remotos de doses atrasadas/ignoradas.
+*   **✅ Diário de Saúde** (Setembro 2026): Sintomas, pressão arterial, glicemia e bem-estar persistidos por paciente.
+*   **✅ Privacidade e IA responsável** (Setembro 2026): Chave Gemini criptografada, fonte oficial por medicamento e avisos contra prescrição ou alteração de tratamento por IA.
+*   **✅ Relatório médico ampliado** (Setembro 2026): Estados das doses e registros recentes de saúde incluídos no PDF.
 *   **🛡️ Base confiável v2.0** (Setembro 2026): Gradle compatível, dados sensíveis fora do backup automático do Android, configuração centralizada e versão atualizada.
 *   **⏰ Alarmes resistentes a reinicialização** (Setembro 2026): Lembretes ativos são restaurados após reiniciar o celular ou atualizar o aplicativo; alarmes adiados também são cancelados ao excluir um medicamento.
 *   **☁️ Backup consistente** (Setembro 2026): Sincronização usa uma leitura confirmada do Room depois de cada alteração e agora inclui inclusões/exclusões no histórico.
