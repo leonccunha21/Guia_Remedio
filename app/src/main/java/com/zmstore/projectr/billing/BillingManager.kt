@@ -16,7 +16,6 @@ class BillingManager(private val context: Context, private val viewModel: MainVi
 
     private val billingClient: BillingClient = BillingClient.newBuilder(context.applicationContext)
         .setListener(this)
-        .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
         .build()
 
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -96,18 +95,15 @@ class BillingManager(private val context: Context, private val viewModel: MainVi
             return
         }
 
-        // Create ProductDetailsParams - for subscriptions we prefer the first available offer token
-        val productDetailsParams = if (productDetails.subscriptionOfferDetails != null && productDetails.subscriptionOfferDetails!!.isNotEmpty()) {
-            val offerToken = productDetails.subscriptionOfferDetails!![0].offerToken
+        // Create ProductDetailsParams - for subscriptions prefer the first available offer token
+        val productDetailsParams = productDetails.subscriptionOfferDetails?.firstOrNull()?.let { offer ->
             BillingFlowParams.ProductDetailsParams.newBuilder()
                 .setProductDetails(productDetails)
-                .setOfferToken(offerToken)
+                .setOfferToken(offer.offerToken)
                 .build()
-        } else {
-            BillingFlowParams.ProductDetailsParams.newBuilder()
-                .setProductDetails(productDetails)
-                .build()
-        }
+        } ?: BillingFlowParams.ProductDetailsParams.newBuilder()
+            .setProductDetails(productDetails)
+            .build()
 
         val flowParams = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(listOf(productDetailsParams))
