@@ -66,6 +66,17 @@ class CloudBackupRepository @Inject constructor(
         }
     }
 
+    suspend fun deleteUserData(): Result<Unit> {
+        val user = authRepository.currentUser ?: return Result.failure(IllegalStateException("Usuário não autenticado"))
+        if (user.isAnonymous) return Result.success(Unit)
+        return try {
+            database.child("users").child(user.uid).removeValue().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun restoreAll(): Result<CloudSnapshot> {
         val user = authRepository.currentUser
             ?: return Result.failure(IllegalStateException("Usuário não autenticado"))
@@ -127,6 +138,16 @@ class CloudBackupRepository @Inject constructor(
             emit("Backup na Nuvem Desativado (Modo Convidado)")
         } else {
             emit("Sincronizando com a Nuvem...")
+        }
+    }
+
+    suspend fun uploadImage(filename: String, base64: String) {
+        val user = authRepository.currentUser ?: return
+        if (user.isAnonymous) return
+        try {
+            database.child("users").child(user.uid).child("images").child(filename).setValue(base64).await()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }

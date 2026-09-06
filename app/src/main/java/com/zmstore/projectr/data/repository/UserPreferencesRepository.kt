@@ -17,7 +17,8 @@ data class UserPreferences(
     val emergencyContact: String,
     val geminiApiKey: String = "",
     val isBiometricEnabled: Boolean = false,
-    val isFirstRun: Boolean = true
+    val isFirstRun: Boolean = true,
+    val isPremium: Boolean = false
 )
 
 class UserPreferencesRepository(private val context: Context) {
@@ -41,6 +42,7 @@ class UserPreferencesRepository(private val context: Context) {
         val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
         val IS_BIOMETRIC_ENABLED = booleanPreferencesKey("is_biometric_enabled")
         val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
+    val IS_PREMIUM = booleanPreferencesKey("is_premium")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -59,7 +61,8 @@ class UserPreferencesRepository(private val context: Context) {
                 geminiApiKey = securePreferences.getString("gemini_api_key", null)
                     ?: preferences[PreferencesKeys.GEMINI_API_KEY] ?: "",
                 isBiometricEnabled = preferences[PreferencesKeys.IS_BIOMETRIC_ENABLED] ?: false,
-                isFirstRun = preferences[PreferencesKeys.IS_FIRST_RUN] ?: true
+                isFirstRun = preferences[PreferencesKeys.IS_FIRST_RUN] ?: true,
+                isPremium = preferences[PreferencesKeys.IS_PREMIUM] ?: false
             )
         }
 
@@ -86,5 +89,16 @@ class UserPreferencesRepository(private val context: Context) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.IS_FIRST_RUN] = false
         }
+    }
+
+    suspend fun setPremium(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_PREMIUM] = enabled
+        }
+    }
+
+    suspend fun clearPreferences() {
+        context.dataStore.edit { it.clear() }
+        securePreferences.edit().clear().apply()
     }
 }

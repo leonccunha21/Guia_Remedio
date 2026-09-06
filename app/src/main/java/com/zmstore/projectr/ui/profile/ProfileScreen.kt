@@ -13,9 +13,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zmstore.projectr.R
 import com.zmstore.projectr.ui.MainViewModel
 import com.zmstore.projectr.ui.theme.*
 
@@ -34,6 +36,7 @@ fun ProfileScreen(
     var emergency by remember { mutableStateOf("") }
     var geminiApiKey by remember { mutableStateOf("") }
     var isBiometricEnabled by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     // Sync local state when prefs load
     LaunchedEffect(userPrefs) {
@@ -45,7 +48,9 @@ fun ProfileScreen(
         isBiometricEnabled = userPrefs.isBiometricEnabled
     }
 
+    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
     Scaffold(
+        snackbarHost = { androidx.compose.material3.SnackbarHost(hostState = snackbarHostState) },
         containerColor = Color.White,
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -143,7 +148,7 @@ fun ProfileScreen(
 
             // AI Settings Section
             ProfileSectionHeader("INTELIGÊNCIA ARTIFICIAL", Icons.Default.AutoAwesome)
-
+ 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
@@ -197,6 +202,88 @@ fun ProfileScreen(
                 }
             }
 
+            // Cloud Backup Section (Premium info)
+            ProfileSectionHeader("BACKUP NA NUVEM", Icons.Default.Cloud)
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                color = Color.White,
+                shadowElevation = 2.dp,
+                border = BorderStroke(1.dp, Color(0xFFE8ECEB))
+            ) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = if (userPrefs.isPremium) "Seu plano é VIP — seus dados são sincronizados na nuvem de forma automática." else "Usuários gratuitos têm backup apenas local. Para salvar na nuvem, ative o plano VIP.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MedicleanDarkGreen.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    if (!userPrefs.isPremium) {
+                        Text(
+                            text = "Observação: o Firebase gratuito é usado. Imagens e backups na nuvem dependem de autenticação e podem ter limites. Ao não ser VIP, seus dados podem não ser restaurados se o app for removido.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MedicleanDarkGreen.copy(alpha = 0.5f)
+                        )
+
+                        val activity = (context as? android.app.Activity)
+                        val billingManager = remember { com.zmstore.projectr.billing.BillingManager(context, viewModel) }
+                        DisposableEffect(billingManager) {
+                            onDispose { billingManager.disconnect() }
+                        }
+
+                        Button(
+                            onClick = { activity?.let { act -> billingManager.launchPurchase(act, com.zmstore.projectr.billing.BillingManager.SKU_MONTHLY) } },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MedicleanTeal),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(Icons.Default.Star, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Ativar VIP (Assinatura Mensal)", fontWeight = FontWeight.Black)
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Button(
+                            onClick = { activity?.let { act -> billingManager.launchPurchase(act, com.zmstore.projectr.billing.BillingManager.SKU_YEARLY) } },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MedicleanTeal),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(Icons.Default.Star, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Ativar VIP (Assinatura Anual)", fontWeight = FontWeight.Black)
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Button(
+                            onClick = { activity?.let { act -> billingManager.launchPurchase(act, com.zmstore.projectr.billing.BillingManager.SKU_LIFETIME) } },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MedicleanTeal),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(Icons.Default.Star, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Ativar VIP (Acesso Vitalício)", fontWeight = FontWeight.Black)
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = { viewModel.setPremium(false) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, MedicleanTeal)
+                        ) {
+                            Icon(Icons.Default.StarBorder, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Desativar VIP (Simular)", fontWeight = FontWeight.Black)
+                        }
+                    }
+                }
+            }
+
             Button(
                 onClick = { 
                     viewModel.updateProfile(name, weight, height, emergency, geminiApiKey, isBiometricEnabled)
@@ -213,13 +300,49 @@ fun ProfileScreen(
                 Text("SALVAR ALTERAÇÕES", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
             }
 
+            // Danger Zone Section
+            ProfileSectionHeader(stringResource(R.string.profile_danger_zone), Icons.Default.Warning)
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                color = MedicleanError.copy(alpha = 0.05f),
+                border = BorderStroke(1.dp, MedicleanError.copy(alpha = 0.1f))
+            ) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.profile_delete_account_label),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Black,
+                        color = MedicleanError
+                    )
+                    Text(
+                        text = stringResource(R.string.profile_delete_account_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MedicleanError.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    OutlinedButton(
+                        onClick = { showDeleteConfirm = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MedicleanError),
+                        border = BorderStroke(1.dp, MedicleanError)
+                    ) {
+                        Icon(Icons.Default.DeleteForever, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.profile_delete_account_btn), fontWeight = FontWeight.Black)
+                    }
+                }
+            }
+
             // Footer
             Column(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "Versão 2.1.0 • RemeDio Certo Premium",
+                    "Versão ${com.zmstore.projectr.BuildConfig.VERSION_NAME} • RemeDio Certo Premium",
                     style = MaterialTheme.typography.labelSmall,
                     color = MedicleanDarkGreen.copy(alpha = 0.3f),
                     fontWeight = FontWeight.Black
@@ -232,6 +355,39 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+
+    // Listen for purchase events and show feedback
+    LaunchedEffect(Unit) {
+        viewModel.purchaseEvent.collect { (success, message) ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text(stringResource(R.string.delete_account_title)) },
+            text = { Text(stringResource(R.string.delete_account_confirmation)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirm = false
+                        viewModel.deleteAccount { success ->
+                            if (success) onBack() // Retorna para a home/login
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MedicleanError)
+                ) {
+                    Text(stringResource(R.string.delete_account_confirm_btn), color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text(stringResource(R.string.delete_account_cancel_btn))
+                }
+            }
+        )
     }
 }
 

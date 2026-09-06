@@ -20,6 +20,8 @@ import javax.inject.Inject
 import com.zmstore.projectr.util.MedicationAlarmHelper
 import com.zmstore.projectr.data.model.DoseStatus
 import com.zmstore.projectr.data.remote.CloudBackupRepository
+import com.zmstore.projectr.util.TtsHelper
+import kotlinx.coroutines.delay
 
 @AndroidEntryPoint
 class AlarmReceiver : BroadcastReceiver() {
@@ -108,6 +110,14 @@ class AlarmReceiver : BroadcastReceiver() {
 
             notificationManager.notify(medicationId, notification)
  
+            // Falar o nome do remédio (TTS)
+            val ttsHelper = TtsHelper(context)
+            // Aguarda um pouco para o TTS inicializar
+            CoroutineScope(Dispatchers.Main).launch {
+                delay(1000)
+                ttsHelper.speak("Atenção, está na hora de tomar o seu remédio: ${medication.name}")
+            }
+
             // Reschedule next regular alarm
             MedicationAlarmHelper.scheduleAlarm(context, medication)
         }

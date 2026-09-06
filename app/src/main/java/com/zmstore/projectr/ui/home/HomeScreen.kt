@@ -12,13 +12,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import com.zmstore.projectr.R
 import kotlinx.coroutines.launch
 import com.zmstore.projectr.data.model.Medication
@@ -51,8 +60,11 @@ fun HomeScreen(
     var showProfileMenu by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(Unit) {
+        viewModel.updateSearchQuery("")
+        viewModel.updateSelectedCategory("Todos")
         viewModel.stockAlert.collect { message ->
             snackbarHostState.showSnackbar(message)
         }
@@ -138,6 +150,7 @@ fun HomeScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         medicationToConfirm?.let { med ->
                             viewModel.confirmDose(med.id, med.name, confirmationNote.ifBlank { null })
                         }
@@ -159,15 +172,10 @@ fun HomeScreen(
                     Text("CANCELAR", color = MedicleanDarkGreen.copy(alpha = 0.5f), fontWeight = FontWeight.Bold)
                 }
             },
-            containerColor = if (false) Color(0xFF1E2A28) else Color.White,
+            containerColor = Color.White,
             shape = RoundedCornerShape(32.dp),
             tonalElevation = 0.dp
         )
-    }
-
-
-    if (userPrefs.isFirstRun) {
-        OnboardingOverlay(onDismiss = { viewModel.completeOnboarding() })
     }
 
     Scaffold(
@@ -202,60 +210,47 @@ fun HomeScreen(
                 HomeHeader(
                     selectedProfile = selectedProfile,
                     onOpenDrawer = onOpenDrawer,
-                    onProfileClick = { showProfileMenu = true }
+                    onProfileClick = { showProfileMenu = true },
+                    emergencyContact = userPrefs.emergencyContact,
+                    userName = userPrefs.name
                 )
 
-                HealthDashboard(
-                    adherence = adherence,
-                    onVoiceClick = {
-                        val intent = android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                            putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                            putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
-                            putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Diga o nome do remédio")
-                        }
-                        try {
-                            speechRecognizerLauncher.launch(intent)
-                        } catch (e: Exception) {
-                            scope.launch { snackbarHostState.showSnackbar("Erro no reconhecimento de voz") }
-                        }
-                    }
-                )
+                // Resumo do Dia - Foco em acessibilidade
+                HealthDashboard(adherence = adherence)
 
-                HomeSearchSection(
-                    searchQuery = searchQuery,
-                    onSearchChange = { viewModel.updateSearchQuery(it) },
-                    selectedCategory = selectedCategory,
-                    onCategoryChange = { viewModel.updateSelectedCategory(it) }
-                )
-
-                // Barra de Acesso Rápido - Premium Styling
-                Row(
+                // Botão de ação principal - Grande e fácil de ver
+                Button(
+                    onClick = { 
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onNavigateToDetail(-1, "") 
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(horizontal = 20.dp, vertical = 8.dp)
+                        .height(72.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MedicleanTeal)
                 ) {
-                    QuickActionCard(
-                        icon = Icons.AutoMirrored.Filled.List,
-                        label = "Meus Remédios",
-                        modifier = Modifier.weight(1f),
-                        onClick = onNavigateToMedicationList
-                    )
-                    QuickActionCard(
-                        icon = Icons.Default.NotificationsActive,
-                        label = "Alarmes",
-                        modifier = Modifier.weight(1f),
-                        onClick = onNavigateToAlarms
-                    )
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(32.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text(stringResource(R.string.home_btn_add_big), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
                 }
 
                 if (medications.isEmpty()) {
-                    EmptyState(searchQuery.isNotBlank())
+                    EmptyState(false)
                 } else {
+                    Text(
+                        text = stringResource(R.string.home_next_medications),
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Black,
+                        color = MedicleanDarkGreen.copy(alpha = 0.6f)
+                    )
+                    
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         items(medications, key = { it.id }) { medication ->
                             MedicationCard(
@@ -287,109 +282,57 @@ fun HomeScreen(
 }
 
 @Composable
-fun HealthDashboard(adherence: Pair<Int, Int>, onVoiceClick: () -> Unit) {
+fun HealthDashboard(adherence: Pair<Int, Int>) {
     val (taken, total) = adherence
-    val progress = if (total > 0) taken.toFloat() / total else 0f
-    val percentage = (progress * 100).toInt()
-
-    Card(
+    
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, Color(0xFFE8ECEB))
+        shape = RoundedCornerShape(24.dp),
+        color = MedicleanMint,
+        border = BorderStroke(2.dp, MedicleanTeal.copy(alpha = 0.2f))
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            // Background organic shape decoration
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(
-                    color = MedicleanTeal.copy(alpha = 0.05f),
-                    radius = size.minDimension * 0.8f,
-                    center = androidx.compose.ui.geometry.Offset(size.width * 0.9f, size.height * 0.1f)
+        Row(
+            modifier = Modifier.padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    stringResource(R.string.home_doses_today),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MedicleanDarkGreen.copy(alpha = 0.6f)
                 )
-            }
-
-            Row(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Surface(
-                        color = MedicleanTeal.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = "RESUMO DE HOJE",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Black,
-                            color = MedicleanTeal,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        text = "$taken de $total",
-                        style = MaterialTheme.typography.headlineLarge,
+                        text = taken.toString(),
+                        style = MaterialTheme.typography.displayMedium,
                         fontWeight = FontWeight.Black,
-                        color = MedicleanDarkGreen
+                        color = MedicleanTeal
                     )
                     Text(
-                        text = "doses concluídas",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MedicleanDarkGreen.copy(alpha = 0.6f),
-                        fontWeight = FontWeight.Bold
+                        text = " / $total",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MedicleanDarkGreen.copy(alpha = 0.4f),
+                        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
                     )
-
-                    
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Voice Action TextButton instead of a large surface button
-                    TextButton(
-                        onClick = onVoiceClick,
-                        contentPadding = PaddingValues(0.dp),
-                        modifier = Modifier.height(30.dp)
-                    ) {
-                        Icon(Icons.Default.Mic, contentDescription = null, tint = MedicleanTeal, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Confirmar por Voz", style = MaterialTheme.typography.labelMedium, color = MedicleanTeal, fontWeight = FontWeight.Black)
-                    }
                 }
-
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(80.dp)) {
-                    // Track
-                    CircularProgressIndicator(
-                        progress = { 1f },
-                        modifier = Modifier.fillMaxSize(),
-                        color = Color.Black.copy(alpha = 0.05f),
-                        strokeWidth = 10.dp,
-                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                    )
-                    // Progress
-                    CircularProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier.fillMaxSize(),
-                        color = MedicleanTeal,
-                        strokeWidth = 10.dp,
-                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                    )
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "$percentage%",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Black,
-                            color = MedicleanDarkGreen
-                        )
+            }
+            
+            if (total > 0 && taken == total) {
+                Surface(
+                    shape = CircleShape,
+                    color = MedicleanTeal,
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(40.dp))
                     }
                 }
             }
-
         }
     }
 }
@@ -438,8 +381,12 @@ fun QuickActionCard(
 fun HomeHeader(
     selectedProfile: Profile?,
     onOpenDrawer: () -> Unit,
-    onProfileClick: () -> Unit
+    onProfileClick: () -> Unit,
+    emergencyContact: String? = null,
+    userName: String = ""
 ) {
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -448,7 +395,10 @@ fun HomeHeader(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         IconButton(
-            onClick = onOpenDrawer,
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onOpenDrawer()
+            },
             modifier = Modifier
                 .background(if (false) Color.White.copy(alpha = 0.08f) else Color.White, RoundedCornerShape(16.dp))
                 .size(48.dp)
@@ -458,23 +408,47 @@ fun HomeHeader(
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            val displayName = if (!selectedProfile?.name.isNullOrBlank() && selectedProfile.name != "Meu Perfil") {
+                selectedProfile.name
+            } else if (userName.isNotBlank()) {
+                userName
+            } else {
+                "Usuário"
+            }
+
             Text(
-                text = "Olá, ${selectedProfile?.name ?: "Usuário"}",
+                text = "Olá, $displayName",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Black,
                 color = MedicleanDarkGreen
             )
-            Text(
-                text = "Sua rotina de saúde hoje",
-                style = MaterialTheme.typography.labelMedium,
-                color = MedicleanDarkGreen.copy(alpha = 0.5f),
-                fontWeight = FontWeight.Black,
-                letterSpacing = 0.5.sp
-            )
+            
+            Button(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (!emergencyContact.isNullOrBlank()) {
+                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$emergencyContact"))
+                        context.startActivity(intent)
+                    } else {
+                        Toast.makeText(context, "Cadastre um contato de emergência no seu perfil primeiro!", Toast.LENGTH_LONG).show()
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MedicleanError),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.height(32.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+            ) {
+                Icon(Icons.Default.Emergency, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                Spacer(Modifier.width(6.dp))
+                Text("SOS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = Color.White)
+            }
         }
 
         Surface(
-            onClick = onProfileClick,
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onProfileClick()
+            },
             shape = RoundedCornerShape(16.dp),
             color = if (false) Color.White.copy(alpha = 0.08f) else Color.White,
             modifier = Modifier.size(48.dp),
@@ -565,98 +539,69 @@ fun MedicationCard(
     onDelete: (Medication) -> Unit
 ) {
     with(sharedTransitionScope) {
-        Card(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onEdit(medication) },
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (false) Color(0xFF1E2A28) else Color.White
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            border = if (false) null else BorderStroke(1.dp, Color(0xFFE8ECEB))
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White,
+            shadowElevation = 4.dp,
+            border = BorderStroke(2.dp, Color(0xFFF0F0F0))
         ) {
-            Column(modifier = Modifier.padding(24.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Profile/Icon Container with soft glow
                     Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color(medication.iconColor).copy(alpha = 0.12f),
-                        modifier = Modifier
-                            .size(64.dp)
-                            .sharedElement(
-                                rememberSharedContentState(key = "medication_icon_${medication.id}"),
-                                animatedVisibilityScope = animatedVisibilityScope
-                            ),
-                        border = BorderStroke(1.dp, Color(medication.iconColor).copy(alpha = 0.2f))
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color(medication.iconColor).copy(alpha = 0.1f),
+                        modifier = Modifier.size(56.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = when(medication.iconType) {
-                                    "capsule" -> Icons.Default.Adjust
-                                    "drops" -> Icons.Default.WaterDrop
-                                    "liquid" -> Icons.Default.Vaccines
-                                    else -> Icons.Default.Medication
-                                },
-                                contentDescription = null,
-                                tint = Color(medication.iconColor),
-                                modifier = Modifier.size(34.dp)
-                            )
+                            if (medication.imageUrl != null) {
+                                val painter = rememberAsyncImagePainter(medication.imageUrl)
+                                Image(
+                                    painter = painter,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = when(medication.iconType) {
+                                        "capsule" -> Icons.Default.Adjust
+                                        "drops" -> Icons.Default.WaterDrop
+                                        "liquid" -> Icons.Default.Vaccines
+                                        else -> Icons.Default.Medication
+                                    },
+                                    contentDescription = null,
+                                    tint = Color(medication.iconColor),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
                         }
                     }
                     
-                    Spacer(modifier = Modifier.width(18.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
                     
                     Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = medication.name,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Black,
-                                color = MedicleanDarkGreen,
-                                modifier = Modifier.sharedElement(
-                                    rememberSharedContentState(key = "medication_title_${medication.id}"),
-                                    animatedVisibilityScope = animatedVisibilityScope
-                                )
-                            )
-                            if (medication.streakCount > 1) {
-                                Surface(
-                                    color = Color(0xFFFF9800).copy(alpha = 0.12f),
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.padding(start = 12.dp)
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)) {
-                                        Text("🔥", fontSize = 14.sp)
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(medication.streakCount.toString(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = Color(0xFFE65100))
-                                    }
-                                }
-                            }
-                        }
+                        Text(
+                            text = medication.name,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Black,
+                            color = MedicleanDarkGreen
+                        )
                         Text(
                             text = medication.dosage,
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.titleMedium,
                             color = MedicleanDarkGreen.copy(alpha = 0.5f),
                             fontWeight = FontWeight.Bold
                         )
                     }
-
-                    if (medication.stockCount <= 5 && medication.stockCount > 0) {
-                        Surface(
-                            color = MedicleanError.copy(alpha = 0.12f),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                                Text("ESTOQUE BAIXO", fontSize = 10.sp, fontWeight = FontWeight.Black, color = MedicleanError, letterSpacing = 0.5.sp)
-                            }
-                        }
-                    }
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -664,43 +609,34 @@ fun MedicationCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
+                        val isLate = countdown == "Atrasado"
                         Text(
-                            text = if (medication.isActive) "PRÓXIMA DOSE" else "STATUS",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MedicleanDarkGreen.copy(alpha = 0.4f),
+                            text = if (isLate) stringResource(R.string.home_status_late) else stringResource(R.string.home_status_next),
+                            style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Black,
-                            letterSpacing = 1.2.sp
+                            color = if (isLate) MedicleanError else MedicleanDarkGreen.copy(alpha = 0.4f)
                         )
                         Text(
-                            text = if (medication.isActive) countdown else "Pausado",
-                            style = MaterialTheme.typography.headlineSmall,
+                            text = countdown,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Black,
-                            color = if (medication.isActive) MedicleanTeal else Color.Gray.copy(alpha = 0.6f)
+                            color = if (isLate) MedicleanError else MedicleanTeal
                         )
                     }
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        IconButton(
-                            onClick = { onDelete(medication) },
-                            modifier = Modifier
-                                .background(MedicleanError.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
-                                .size(48.dp)
+                    if (medication.isActive) {
+                        val haptic = LocalHapticFeedback.current
+                        Button(
+                            onClick = { 
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onConfirm(medication) 
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MedicleanTeal),
+                            modifier = Modifier.height(60.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            contentPadding = PaddingValues(horizontal = 24.dp)
                         ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Excluir", tint = MedicleanError, modifier = Modifier.size(20.dp))
-                        }
-                        
-                        if (medication.isActive) {
-                            Button(
-                                onClick = { onConfirm(medication) },
-                                colors = ButtonDefaults.buttonColors(containerColor = MedicleanTeal),
-                                shape = RoundedCornerShape(18.dp),
-                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
-                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
-                            ) {
-                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.White)
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text("TOMAR AGORA", fontWeight = FontWeight.Black, color = Color.White)
-                            }
+                            Text("TOMAR AGORA", fontWeight = FontWeight.Black, fontSize = 16.sp)
                         }
                     }
                 }
@@ -814,54 +750,6 @@ fun ProfileSelectionOverlay(
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun OnboardingOverlay(onDismiss: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.8f), Color.Black.copy(alpha = 0.95f))))
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Surface(
-                modifier = Modifier.size(120.dp),
-                color = MedicleanTeal.copy(alpha = 0.2f),
-                shape = CircleShape
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.RocketLaunch, contentDescription = null, tint = MedicleanTeal, modifier = Modifier.size(60.dp))
-                }
-            }
-            Spacer(modifier = Modifier.height(32.dp))
-            Text(
-                "Bem-vindo ao\nRemédio Certo",
-                style = MaterialTheme.typography.displaySmall,
-                color = Color.White,
-                fontWeight = FontWeight.Black,
-                textAlign = TextAlign.Center,
-                lineHeight = 40.sp
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                "Sua saúde organizada de forma inteligente. Simples, seguro e essencial para sua rotina.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(48.dp))
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = MedicleanTeal),
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.fillMaxWidth().height(56.dp)
-            ) {
-                Text("COMEÇAR AGORA", fontWeight = FontWeight.Black, fontSize = 16.sp)
             }
         }
     }

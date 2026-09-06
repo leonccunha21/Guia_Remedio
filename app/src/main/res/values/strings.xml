@@ -78,6 +78,11 @@
     <string name="home_reminder_next">PRÓXIMA DOSE</string>
     <string name="home_medication_paused">Pausado</string>
     <string name="home_medication_low_stock">Estoque Baixo</string>
+    <string name="home_doses_today">Doses de Hoje</string>
+    <string name="home_btn_add_big">CADASTRAR NOVO REMÉDIO</string>
+    <string name="home_next_medications">PRÓXIMOS REMÉDIOS</string>
+    <string name="home_status_late">⚠️ ATRASADO</string>
+    <string name="home_status_next">PRÓXIMO</string>
     <string name="detail_title_add">Confirmar Medicamento</string>
     <string name="detail_title_edit">Editar Medicamento</string>
     <string name="detail_warning_title">AVISO IMPORTANTE</string>
@@ -103,9 +108,23 @@
     <string name="detail_field_active_tip">Ative para receber lembretes</string>
     <string name="detail_medical_disclaimer">ESTE APP NÃO SUBSTITUI ORIENTAÇÃO MÉDICA. Em caso de dúvidas ou sintomas persistentes, descontinue o uso e procure um profissional de saúde imediatamente.</string>
     <string name="detail_btn_save">SALVAR MEDICAMENTO</string>
+    <string name="detail_visual_identity">IDENTIDADE VISUAL</string>
+    <string name="detail_add_photo">ADICIONAR FOTO</string>
+    <string name="detail_change_photo">ALTERAR FOTO</string>
+    <string name="detail_scheduling">AGENDAMENTO</string>
 
     <!-- Notifications -->
     <string name="notification_action_confirm">Tomar Agora</string>
     <string name="notification_action_snooze">Soneca (10 min)</string>
     <string name="notification_action_skip">Ignorar dose</string>
+
+    <!-- Account Deletion -->
+    <string name="delete_account_title">Excluir Conta?</string>
+    <string name="delete_account_confirmation">Tem certeza que deseja apagar todos os seus dados? Esta ação é irreversível e você será desconectado.</string>
+    <string name="delete_account_confirm_btn">Sim, Excluir</string>
+    <string name="delete_account_cancel_btn">Cancelar</string>
+    <string name="profile_danger_zone">ZONA DE PERIGO</string>
+    <string name="profile_delete_account_label">Excluir Conta e Dados</string>
+    <string name="profile_delete_account_desc">Ao excluir sua conta, todos os seus medicamentos, histórico e configurações serão apagados permanentemente tanto do dispositivo quanto da nuvem. Esta ação não pode ser desfeita.</string>
+    <string name="profile_delete_account_btn">EXCLUIR MINHA CONTA</string>
 </resources>

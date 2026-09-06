@@ -206,6 +206,43 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /**
+     * If user is premium (and authenticated), uploads an image file to cloud backup as Base64.
+     * Always keep a local copy; this only attempts cloud upload.
+     */
+    fun uploadImageIfPremium(file: java.io.File) {
+        viewModelScope.launch {
+            try {
+                val prefs = userPreferences.value
+                val user = authRepository.currentUser
+                if (prefs.isPremium && user != null && !user.isAnonymous) {
+                    val bytes = file.readBytes()
+                    val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT)
+                    cloudBackupRepository.uploadImage(file.name, base64)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private val _purchaseEvent = kotlinx.coroutines.flow.MutableSharedFlow<Pair<Boolean, String>>()
+    val purchaseEvent = _purchaseEvent.asSharedFlow()
+
+    fun notifyPurchaseResult(success: Boolean, message: String) {
+        viewModelScope.launch {
+            _purchaseEvent.emit(success to message)
+        }
+    }
+
+    fun setPremium(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                userPrefsRepository.setPremium(enabled)
+            } catch (e: Exception) { e.printStackTrace() }
+        }
+    }
+
     fun signInAnonymously(onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             val result = authRepository.signInAnonymously()
@@ -251,6 +288,41 @@ class MainViewModel @Inject constructor(
 
     fun signOut() {
         authRepository.signOut()
+    }
+
+    fun getCurrentUserSync() = authRepository.currentUser
+
+    fun deleteAccount(onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // 1. Limpa na nuvem
+                cloudBackupRepository.deleteUserData()
+                
+                // 2. Limpa local (Room)
+                repository.wipeUserData()
+                
+                // 3. Limpa preferências
+                userPrefsRepository.clearPreferences()
+                
+                // 4. Deleta conta no Firebase Auth
+                val result = authRepository.deleteAccount()
+                
+                if (result.isSuccess) {
+                    _cloudMessage.emit("Conta e dados excluídos com sucesso.")
+                    onComplete(true)
+                } else {
+                    _cloudMessage.emit("Erro ao excluir conta. Pode ser necessário fazer login novamente por segurança.")
+                    onComplete(false)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _cloudMessage.emit("Erro crítico ao excluir conta.")
+                onComplete(false)
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
     fun insertMedication(medication: Medication) {

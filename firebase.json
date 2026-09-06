@@ -1,0 +1,8 @@
+{
+  "database": {
+    "rules": "regras/database.rules.json"
+  },
+  "functions": {
+    "source": "functions"
+  }
+}

@@ -13,3 +13,15 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# IDE and Build files
+.idea/
+.artifacts/
+.kotlin/
+*.log
+
+# App specific
+app/release/
+app/build/
+node_modules/
+

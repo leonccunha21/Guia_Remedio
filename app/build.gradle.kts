@@ -13,14 +13,14 @@ plugins {
 
 android {
     namespace = "com.zmstore.projectr"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.zmstore.projectr"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 6
-        versionName = "3.0.0"
+        targetSdk = 36
+        versionCode = 11
+        versionName = "3.11"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -108,6 +108,7 @@ dependencies {
     
     // Splash Screen
     implementation(libs.androidx.core.splashscreen)
+    implementation(libs.coil.compose)
     
     // CameraX
     implementation(libs.androidx.camera.camera2)
@@ -157,4 +158,10 @@ dependencies {
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+
+    // Play Billing
+    implementation("com.android.billingclient:billing-ktx:8.0.0")
+
+    // Networking
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }

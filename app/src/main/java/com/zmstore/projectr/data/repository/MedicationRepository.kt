@@ -43,6 +43,11 @@ class MedicationRepository(
         if (ownerId != SIGNED_OUT_OWNER) medicationDao.claimLegacyData(ownerId)
     }
 
+    suspend fun wipeUserData() {
+        val ownerId = currentOwnerId()
+        if (ownerId != SIGNED_OUT_OWNER) medicationDao.wipeUserData(ownerId)
+    }
+
     suspend fun getMedicationById(id: Int): Medication? = medicationDao.getMedicationById(currentOwnerId(), id)
     suspend fun getActiveMedicationsOnce(): List<Medication> = medicationDao.getActiveMedicationsOnce(currentOwnerId())
     suspend fun getAllMedicationsOnce(): List<Medication> = medicationDao.getAllMedicationsOnce(currentOwnerId())

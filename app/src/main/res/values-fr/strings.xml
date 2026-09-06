@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">ZM Bon Remède</string>
+    <string name="login_welcome">Bienvenue sur Bon Remède</string>
+    <string name="login_google_btn">Se connecter avec Google</string>
+    <string name="login_email_btn">Se connecter par Email</string>
+    <string name="login_phone_btn">Se connecter par Téléphone</string>
+    <string name="login_guest_btn">Entrer en tant qu\'invité (Mode hors ligne)</string>
+    <string name="history_title">Historique des doses</string>
+    <string name="home_btn_scan">Scanner le médicament</string>
+    <string name="home_reminder_now">PRENDRE MAINTENANT</string>
+    <string name="detail_btn_save">ENREGISTRER LE MÉDICAMENT</string>
+    <string name="delete_account_title">Supprimer le compte ?</string>
+    <string name="profile_delete_account_btn">SUPPRIMER MON COMPTE</string>
+</resources>

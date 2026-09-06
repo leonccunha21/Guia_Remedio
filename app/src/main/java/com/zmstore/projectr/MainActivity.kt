@@ -56,18 +56,34 @@ class MainActivity : FragmentActivity() {
         MobileAds.initialize(this) {}
         
         enableEdgeToEdge()
+        // Configura o comportamento de exibição ponta a ponta moderno
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+        
         setContent {
             ProjectRTheme {
                 val userPrefs by viewModel.userPreferences.collectAsState()
+                var biometricCheckDone by remember { mutableStateOf(false) }
                 var isAuthenticated by remember { mutableStateOf(false) }
 
+                LaunchedEffect(userPrefs.isFirstRun) {
+                    // Se for a primeira vez, não precisa de biometria
+                    if (userPrefs.isFirstRun) {
+                        isAuthenticated = true
+                        biometricCheckDone = true
+                    }
+                }
+
                 LaunchedEffect(userPrefs.isBiometricEnabled) {
-                    if (userPrefs.isBiometricEnabled && !isAuthenticated) {
+                    if (!biometricCheckDone && userPrefs.isBiometricEnabled) {
                         showBiometricPrompt {
                             isAuthenticated = true
+                            biometricCheckDone = true
                         }
-                    } else {
+                    } else if (!userPrefs.isBiometricEnabled) {
                         isAuthenticated = true
+                        biometricCheckDone = true
                     }
                 }
 
@@ -183,7 +199,7 @@ class MainActivity : FragmentActivity() {
                                     fontWeight = FontWeight.Black
                                 )
                                 Text(
-                                    "Versão 3.0 - Premium",
+                                    "Versão ${BuildConfig.VERSION_NAME} - Premium",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color.White.copy(alpha = 0.7f),
                                     fontWeight = FontWeight.Bold

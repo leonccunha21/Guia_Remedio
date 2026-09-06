@@ -1,9 +1,12 @@
 ﻿package com.zmstore.projectr.data.local
 
 import android.content.Context
+import android.database.sqlite.SQLiteException
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.zmstore.projectr.data.model.DoseHistory
 import com.zmstore.projectr.data.model.Medication
 
@@ -13,7 +16,7 @@ import com.zmstore.projectr.data.model.CaregiverLink
 
 @Database(
     entities = [Medication::class, DoseHistory::class, Profile::class, HealthEntry::class, CaregiverLink::class],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -43,10 +46,23 @@ abstract class AppDatabase : RoomDatabase() {
                         db.insert("profiles", android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE, contentValues)
                     }
                 })
-                .addMigrations(MIGRATION_7_8)
+                .addMigrations(MIGRATION_7_8, MIGRATION_8_9)
                 .build()
                 INSTANCE = instance
                 instance
+            }
+        }
+
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Safer approach with try-catch for development iterations
+                try {
+                    db.execSQL("ALTER TABLE medications ADD COLUMN imageUrl TEXT")
+                } catch (e: SQLiteException) {
+                    if (e.message?.contains("duplicate column name", ignoreCase = true) != true) {
+                        throw e
+                    }
+                }
             }
         }
 

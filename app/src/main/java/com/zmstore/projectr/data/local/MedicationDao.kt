@@ -91,6 +91,30 @@ interface MedicationDao {
         claimLegacyProfiles(ownerId)
     }
 
+    @Query("DELETE FROM medications WHERE ownerId = :ownerId")
+    suspend fun deleteAllMedications(ownerId: String)
+
+    @Query("DELETE FROM dose_history WHERE ownerId = :ownerId")
+    suspend fun deleteAllHistory(ownerId: String)
+
+    @Query("DELETE FROM profiles WHERE ownerId = :ownerId")
+    suspend fun deleteAllProfiles(ownerId: String)
+
+    @Query("DELETE FROM health_entries WHERE ownerId = :ownerId")
+    suspend fun deleteAllHealthEntries(ownerId: String)
+
+    @Query("DELETE FROM caregiver_links WHERE ownerId = :ownerId")
+    suspend fun deleteAllCaregiverLinks(ownerId: String)
+
+    @Transaction
+    suspend fun wipeUserData(ownerId: String) {
+        deleteAllMedications(ownerId)
+        deleteAllHistory(ownerId)
+        deleteAllProfiles(ownerId)
+        deleteAllHealthEntries(ownerId)
+        deleteAllCaregiverLinks(ownerId)
+    }
+
     @Query("SELECT * FROM health_entries WHERE ownerId = :ownerId ORDER BY timestamp DESC")
     fun getHealthEntries(ownerId: String): Flow<List<HealthEntry>>
 

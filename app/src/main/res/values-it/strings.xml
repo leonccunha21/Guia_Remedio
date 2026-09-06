@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">ZM Rimedio Giusto</string>
+    <string name="login_welcome">Benvenuto in Rimedio Giusto</string>
+    <string name="login_google_btn">Accedi con Google</string>
+    <string name="login_email_btn">Accedi con Email</string>
+    <string name="login_phone_btn">Accedi con Telefono</string>
+    <string name="login_guest_btn">Entra come Ospite (Modalità Offline)</string>
+    <string name="history_title">Cronologia Dosi</string>
+    <string name="home_btn_scan">Scansiona Farmaco</string>
+    <string name="home_reminder_now">PRENDI ORA</string>
+    <string name="detail_btn_save">SALVA FARMACO</string>
+    <string name="delete_account_title">Elimina Account?</string>
+    <string name="profile_delete_account_btn">ELIMINA IL MIO ACCOUNT</string>
+</resources>

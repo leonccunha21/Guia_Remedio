@@ -27,11 +27,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.zmstore.projectr.data.model.Medication
 import com.zmstore.projectr.receiver.AlarmReceiver
 import com.zmstore.projectr.ui.theme.*
@@ -62,6 +64,7 @@ fun MedicationDetailScreen(
     var instructions by remember { mutableStateOf("") }
     var sideEffects by remember { mutableStateOf("") }
     var alerts by remember { mutableStateOf("") }
+    var imageUrl by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf("Outros") }
     var useCustomTimes by remember { mutableStateOf(false) }
     var customTimes by remember { mutableStateOf("") }
@@ -128,6 +131,7 @@ fun MedicationDetailScreen(
                 customTimes = it.customTimes ?: ""
                 useCustomTimes = it.customTimes != null && it.customTimes.isNotBlank()
                 isActive = it.isActive
+                imageUrl = it.imageUrl
                 profileId = it.profileId
                 lastTakenTimestamp = it.lastTakenTimestamp
                 iconType = it.iconType
@@ -191,23 +195,36 @@ fun MedicationDetailScreen(
                             color = Color(iconColor).copy(alpha = 0.1f),
                             modifier = Modifier
                                 .size(80.dp)
+                                .clickable { 
+                                    // Abrir seletor de imagem se desejar substituir o ícone
+                                }
                                 .sharedElement(
                                     rememberSharedContentState(key = "medication_icon_$medicationId"),
                                     animatedVisibilityScope = animatedVisibilityScope
                                 )
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = when(iconType) {
-                                        "capsule" -> Icons.Default.Adjust
-                                        "drops" -> Icons.Default.WaterDrop
-                                        "liquid" -> Icons.Default.Vaccines
-                                        else -> Icons.Default.Medication
-                                    },
-                                    contentDescription = null,
-                                    tint = Color(iconColor),
-                                    modifier = Modifier.size(44.dp)
-                                )
+                                if (imageUrl != null) {
+                                    val painter = rememberAsyncImagePainter(imageUrl)
+                                    Image(
+                                        painter = painter,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = when(iconType) {
+                                            "capsule" -> Icons.Default.Adjust
+                                            "drops" -> Icons.Default.WaterDrop
+                                            "liquid" -> Icons.Default.Vaccines
+                                            else -> Icons.Default.Medication
+                                        },
+                                        contentDescription = null,
+                                        tint = Color(iconColor),
+                                        modifier = Modifier.size(44.dp)
+                                    )
+                                }
                             }
                         }
                         
@@ -266,7 +283,63 @@ fun MedicationDetailScreen(
                         .background(if (false) Color.White.copy(alpha = 0.05f) else MedicleanMint.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
                         .padding(16.dp)
                 ) {
-                    Text("IDENTIDADE VISUAL", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black, color = MedicleanTeal, letterSpacing = 1.sp)
+                    val imagePickerLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.OpenDocument()
+                    ) { uri ->
+                        uri?.let {
+                            try {
+                                // Persist read permission so the app can access the content URI
+                                context.contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            } catch (e: Exception) { e.printStackTrace() }
+
+                            // Copy the selected image into app's internal storage for consistent access
+                            try {
+                                val imagesDir = java.io.File(context.filesDir, "images").apply { if (!exists()) mkdirs() }
+                                val filename = "med_${System.currentTimeMillis()}.jpg"
+                                val outFile = java.io.File(imagesDir, filename)
+                                context.contentResolver.openInputStream(it)?.use { input ->
+                                    outFile.outputStream().use { output -> input.copyTo(output) }
+                                }
+                                imageUrl = android.net.Uri.fromFile(outFile).toString()
+                                // Ask ViewModel to upload to cloud if user is premium
+                                try { viewModel.uploadImageIfPremium(outFile) } catch (e: Exception) { e.printStackTrace() }
+                            } catch (e: Exception) { e.printStackTrace(); imageUrl = it.toString() }
+                        }
+                    }
+
+                    val takePictureLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.TakePicturePreview()
+                    ) { bitmap ->
+                        bitmap?.let {
+                            try {
+                                val imagesDir = java.io.File(context.filesDir, "images").apply { if (!exists()) mkdirs() }
+                                val filename = "med_${System.currentTimeMillis()}.jpg"
+                                val file = java.io.File(imagesDir, filename)
+                                file.outputStream().use { out -> it.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out) }
+                                imageUrl = android.net.Uri.fromFile(file).toString()
+                                // Upload if premium
+                                try { viewModel.uploadImageIfPremium(file) } catch (e: Exception) { e.printStackTrace() }
+                            } catch (e: Exception) { e.printStackTrace() }
+                        }
+                    }
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.detail_visual_identity), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black, color = MedicleanTeal, letterSpacing = 1.sp)
+                        
+                        Row {
+                            TextButton(onClick = { imagePickerLauncher.launch(arrayOf("image/*")) }) {
+                                Icon(Icons.Default.Photo, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(if (imageUrl == null) stringResource(R.string.detail_add_photo) else stringResource(R.string.detail_change_photo), fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            TextButton(onClick = { takePictureLauncher.launch(null) }) {
+                                Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Tirar foto", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
                     
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -350,7 +423,7 @@ fun MedicationDetailScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Schedule, contentDescription = null, tint = MedicleanTeal, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text("AGENDAMENTO", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black, color = MedicleanTeal)
+                                Text(stringResource(R.string.detail_scheduling), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black, color = MedicleanTeal)
                             }
                             Switch(
                                 checked = useCustomTimes, 
@@ -488,6 +561,7 @@ fun MedicationDetailScreen(
                             instructions = instructions,
                             sideEffects = sideEffects,
                             alerts = alerts,
+                            imageUrl = imageUrl,
                             stockCount = stockCount.toIntOrNull() ?: 0,
                             intervalHours = if (useCustomTimes) 0 else (interval.toIntOrNull() ?: 0),
                             isActive = isActive,

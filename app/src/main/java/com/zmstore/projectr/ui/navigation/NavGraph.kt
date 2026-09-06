@@ -1,6 +1,14 @@
 ﻿package com.zmstore.projectr.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -19,6 +27,9 @@ import androidx.compose.animation.core.tween
 import com.zmstore.projectr.ui.home.HistoryScreen
 import com.zmstore.projectr.ui.medication.MedicationListScreen
 import com.zmstore.projectr.ui.alarms.AlarmManagementScreen
+import com.zmstore.projectr.ui.onboarding.OnboardingScreen
+import com.zmstore.projectr.ui.theme.MedicleanTeal
+import kotlinx.coroutines.delay
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
@@ -32,6 +43,8 @@ sealed class Screen(val route: String) {
     object Today : Screen("today")
     object Health : Screen("health")
     object Caregivers : Screen("caregivers")
+    object Onboarding : Screen("onboarding")
+    object Landing : Screen("landing")
     object Detail : Screen("detail/{medicationName}?id={id}") {
         fun createRoute(name: String, id: Int = -1) = 
             "detail/${URLEncoder.encode(name, StandardCharsets.UTF_8.toString())}?id=$id"
@@ -47,15 +60,59 @@ fun NavGraph(
     onOpenDrawer: () -> Unit = {},
     onRequestAlarmPermission: () -> Unit = {}
 ) {
+    val currentUser by viewModel.currentUser.collectAsState(initial = viewModel.getCurrentUserSync())
+    val userPrefs by viewModel.userPreferences.collectAsState()
+
     SharedTransitionLayout {
         NavHost(
             navController = navController,
-            startDestination = Screen.Login.route,
+            startDestination = Screen.Landing.route,
             enterTransition = { fadeIn(animationSpec = tween(400)) },
             exitTransition = { fadeOut(animationSpec = tween(400)) },
             popEnterTransition = { fadeIn(animationSpec = tween(400)) },
             popExitTransition = { fadeOut(animationSpec = tween(400)) }
         ) {
+            composable(Screen.Landing.route) {
+                // Decision point
+                LaunchedEffect(currentUser, userPrefs.isFirstRun) {
+                    if (currentUser == null && userPrefs.isFirstRun) {
+                        navController.navigate(Screen.Onboarding.route) {
+                            popUpTo(Screen.Landing.route) { inclusive = true }
+                        }
+                    } else if (currentUser == null) {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(Screen.Landing.route) { inclusive = true }
+                        }
+                    } else {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Landing.route) { inclusive = true }
+                        }
+                    }
+                }
+                
+                // Temporary splash while deciding
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MedicleanTeal)
+                }
+            }
+
+            composable(Screen.Onboarding.route) {
+                OnboardingScreen(
+                    onFinish = {
+                        viewModel.completeOnboarding()
+                        if (currentUser == null) {
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(Screen.Onboarding.route) { inclusive = true }
+                            }
+                        } else {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Onboarding.route) { inclusive = true }
+                            }
+                        }
+                    }
+                )
+            }
+
             composable(Screen.Login.route) {
                 LoginScreen(
                     viewModel = viewModel,
